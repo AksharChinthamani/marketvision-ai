@@ -51,6 +51,12 @@ class KeyQuotaTracker:
 
 quota_tracker = KeyQuotaTracker()
 
+class RoadmapRequest(BaseModel):
+    campaign_name: str
+    goal: str
+    duration: Optional[str] = None
+    strategy_data: Optional[dict] = None
+
 def handle_ai_error(e: Exception):
     error_msg = str(e)
     if isinstance(e, ValueError) and "GEMINI_API_KEY" in error_msg:
