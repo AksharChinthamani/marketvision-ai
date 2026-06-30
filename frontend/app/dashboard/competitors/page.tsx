@@ -11,6 +11,7 @@ import { Target, TrendingUp, AlertCircle, Zap, Package, DollarSign, Swords, Trop
 import { motion } from "framer-motion";
 import { useProject } from "@/context/ProjectContext";
 import { fetchApi } from "@/lib/api";
+import { toast } from "sonner";
 const defaultMarketShareData = [
   { name: "Jan", "You": 24, "Competitor A": 32, "Competitor B": 18 },
   { name: "Feb", "You": 26, "Competitor A": 30, "Competitor B": 19 },
@@ -44,8 +45,10 @@ export default function CompetitorsPage() {
           const data = await response.json();
           if (!response.ok) throw new Error(data.detail || "Failed to generate competitor analysis");
           setAnalysisData(data.data);
+          toast.success("Competitor analysis auto-generated successfully!");
         } catch (err: any) {
           setError(err.message || "An unexpected error occurred.");
+          toast.error(err.message || "An unexpected error occurred.");
         } finally {
           setIsAnalyzing(false);
         }
@@ -81,8 +84,10 @@ export default function CompetitorsPage() {
       }
 
       setAnalysisData(data.data);
+      toast.success("Competitor analysis generated successfully!");
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
+      toast.error(err.message || "An unexpected error occurred.");
     } finally {
       setIsAnalyzing(false);
     }

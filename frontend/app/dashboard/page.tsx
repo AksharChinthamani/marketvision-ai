@@ -10,6 +10,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "rec
 import { useProject } from "@/context/ProjectContext";
 import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function DashboardHomePage() {
   const { projectDetails, strategyData, competitorData, creativeData, roadmapData, clearAllData } = useProject();
@@ -54,10 +55,12 @@ export default function DashboardHomePage() {
         setRecommendations(data.data.recommendations);
       } else {
         setRecError(true);
+        toast.error("Failed to generate recommendations");
       }
     } catch (err) {
       console.error("Failed to fetch recommendations", err);
       setRecError(true);
+      toast.error("Failed to fetch recommendations");
     } finally {
       setIsLoadingRecs(false);
     }

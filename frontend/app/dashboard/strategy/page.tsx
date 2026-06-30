@@ -11,6 +11,7 @@ import { Sparkles, Wand2, Target, Users, ArrowRight, CheckCircle2, Megaphone, Al
 import { motion, AnimatePresence } from "framer-motion";
 import { useProject } from "@/context/ProjectContext";
 import { fetchApi } from "@/lib/api";
+import { toast } from "sonner";
 
 const platformIconMap: Record<string, string> = {
   instagram: "📸",
@@ -55,8 +56,10 @@ export default function StrategyStudioPage() {
           const data = await response.json();
           if (!response.ok) throw new Error(data.detail || "Failed to generate strategy");
           setStrategyData(data.strategy);
+          toast.success("Strategy auto-generated successfully!");
         } catch (err: any) {
           setError(err.message || "An unexpected error occurred.");
+          toast.error(err.message || "An unexpected error occurred.");
         } finally {
           setIsGenerating(false);
         }
@@ -99,8 +102,10 @@ export default function StrategyStudioPage() {
       }
 
       setStrategyData(data.strategy);
+      toast.success("Strategy generated successfully!");
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
+      toast.error(err.message || "An unexpected error occurred.");
     } finally {
       setIsGenerating(false);
     }

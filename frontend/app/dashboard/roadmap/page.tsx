@@ -11,6 +11,7 @@ import { Calendar, Clock, CheckCircle2, PlayCircle, MoreHorizontal, Target, Rock
 import { motion, AnimatePresence } from "framer-motion";
 import { useProject } from "@/context/ProjectContext";
 import { fetchApi } from "@/lib/api";
+import { toast } from "sonner";
 
 const activeCampaigns = [
   { id: 1, name: "Q3 Enterprise SaaS Launch", status: "Active", progress: 65, duration: "Jul 1 - Sep 30", type: "Multi-channel" },
@@ -52,8 +53,10 @@ export default function RoadmapPage() {
               progress: 0,
             }),
           });
+          toast.success("Roadmap auto-generated successfully!");
         } catch (err: any) {
           setError(err.message || "An unexpected error occurred.");
+          toast.error(err.message || "An unexpected error occurred.");
         } finally {
           setIsGenerating(false);
         }
@@ -101,8 +104,10 @@ export default function RoadmapPage() {
         }),
       });
       
+      toast.success("Roadmap generated successfully!");
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
+      toast.error(err.message || "An unexpected error occurred.");
     } finally {
       setIsGenerating(false);
     }

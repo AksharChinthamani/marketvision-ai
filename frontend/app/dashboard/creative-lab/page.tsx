@@ -12,6 +12,7 @@ import { Sparkles, Palette, Type, CheckCircle2, Image as ImageIcon, Target, Refr
 import { motion, AnimatePresence } from "framer-motion";
 import { useProject } from "@/context/ProjectContext";
 import { fetchApi } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function CreativeLabPage() {
   const router = useRouter();
@@ -68,8 +69,10 @@ export default function CreativeLabPage() {
           const data = await response.json();
           if (!response.ok) throw new Error(data.detail || "Failed to generate creative assets");
           setCreativeData(data.data);
+          toast.success("Creative assets auto-generated successfully!");
         } catch (err: any) {
           setError(err.message || "An unexpected error occurred.");
+          toast.error(err.message || "An unexpected error occurred.");
         } finally {
           setIsGenerating(false);
         }
@@ -105,8 +108,10 @@ export default function CreativeLabPage() {
       }
 
       setCreativeData(data.data);
+      toast.success("Creative assets generated successfully!");
     } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
+      toast.error(err.message || "An unexpected error occurred.");
     } finally {
       setIsGenerating(false);
     }

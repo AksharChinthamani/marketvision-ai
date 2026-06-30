@@ -19,7 +19,7 @@ class CampaignBase(BaseModel):
 def get_dashboard_metrics(db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     # Mock metrics data that could later be calculated from DB
     return {
-        "active_campaigns": db.query(models.Campaign).filter(models.Campaign.status == "active").count() or 3,
+        "active_campaigns": db.query(models.Campaign).filter(models.Campaign.status == "active", models.Campaign.owner_id == current_user.id).count(),
         "total_reach": "124.5K",
         "conversion_rate": "3.2%",
         "avg_cpc": "₹14.50"
@@ -28,12 +28,6 @@ def get_dashboard_metrics(db: Session = Depends(database.get_db), current_user: 
 @router.get("/campaigns", response_model=List[CampaignBase])
 def get_campaigns(db: Session = Depends(database.get_db), current_user: models.User = Depends(get_current_user)):
     campaigns = db.query(models.Campaign).filter(models.Campaign.owner_id == current_user.id).all()
-    # If no campaigns exist, return some mock data
-    if not campaigns:
-        return [
-            {"id": 1, "title": "Q3 Product Launch", "status": "active", "progress": 65},
-            {"id": 2, "title": "Retargeting Flow Optimization", "status": "active", "progress": 40}
-        ]
     return campaigns
 
 class CampaignCreate(BaseModel):
