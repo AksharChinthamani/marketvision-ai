@@ -6,7 +6,7 @@ import os
 import json
 import requests
 import time
-from google import genai
+from groq import Groq
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import database, models
@@ -16,6 +16,17 @@ from routers.auth import get_current_user
 load_dotenv()
 
 router = APIRouter()
+
+@router.get("/status")
+def ai_status():
+    """Public endpoint to verify AI service configuration. No auth required."""
+    api_key_env = os.getenv("GROQ_API_KEY", "")
+    keys = [k.strip() for k in api_key_env.split(",") if k.strip()] if api_key_env else []
+    return {
+        "groq_configured": len(keys) > 0,
+        "key_count": len(keys),
+        "key_preview": [k[:8] + "..." for k in keys] if keys else [],
+    }
 
 current_key_idx = 0
 
@@ -69,46 +80,46 @@ def handle_ai_error(e: Exception):
 
 def generate_with_retry(prompt: str):
     global current_key_idx
-    api_key_env = os.getenv("GEMINI_API_KEY")
-    if not api_key_env or api_key_env == "AIzaYourRealGeminiKeyHere":
+    api_key_env = os.getenv("GROQ_API_KEY")
+    if not api_key_env:
         raise HTTPException(status_code=500, detail="AI service error: Valid API key is not configured.")
     
     api_keys = [k.strip().strip('"') for k in api_key_env.split(",") if k.strip()]
     attempts = len(api_keys)
     last_error = None
     
-    for attempt in range(attempts * 2): # Increase attempts to allow for sleeping and retrying
-        # Check if current key is approaching quota limit, if so switch proactively
+    for attempt in range(attempts * 2):
+        # Check if current key is approaching quota limit, switch proactively
         original_idx = current_key_idx
         while quota_tracker.should_switch_key(current_key_idx):
             print(f"[Key Rotation] Key {current_key_idx} approaching quota limit ({quota_tracker.get_key_usage_count(current_key_idx)}/{quota_tracker.quota_limit}). Switching to next key.")
             current_key_idx = (current_key_idx + 1) % len(api_keys)
             
             if current_key_idx == original_idx:
-                # All keys are exhausted, sleep until the current one resets
                 if current_key_idx in quota_tracker.key_usage:
                     reset_time = quota_tracker.key_usage[current_key_idx]["reset_time"]
                     sleep_secs = (reset_time - datetime.now()).total_seconds()
                     if sleep_secs > 0:
                         print(f"[Key Rotation] All keys exhausted. Sleeping for {sleep_secs:.2f} seconds...")
                         time.sleep(sleep_secs)
-                break # Now that we slept, the condition will pass on the next API call or loop iteration
+                break
         
         key = api_keys[current_key_idx]
         remaining = quota_tracker.get_key_remaining(current_key_idx)
         print(f"[API Request] Attempt {attempt + 1}/{attempts} - Using Key {current_key_idx} (Remaining quota: {remaining})")
         
         try:
-            client = genai.Client(api_key=key)
-            
-            # JSON retry loop
             current_prompt = prompt
             for parse_attempt in range(2):
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=current_prompt
+                client = Groq(api_key=key)
+                chat_completion = client.chat.completions.create(
+                    messages=[{"role": "user", "content": current_prompt}],
+                    model="llama-3.3-70b-versatile",
+                    temperature=0.7,
+                    max_tokens=4096,
                 )
-                text = response.text.strip()
+                text = chat_completion.choices[0].message.content.strip()
+                
                 if text.startswith("```json"):
                     text = text[7:]
                 if text.startswith("```"):
@@ -119,7 +130,6 @@ def generate_with_retry(prompt: str):
                 
                 try:
                     result = json.loads(text)
-                    # Success - increment usage counter
                     quota_tracker.increment_usage(current_key_idx)
                     print(f"[Success] Request completed with Key {current_key_idx}")
                     return result
@@ -133,15 +143,14 @@ def generate_with_retry(prompt: str):
             error_msg = str(e)
             print(f"[Error] Key {current_key_idx} failed: {error_msg}")
             
-            # Check for quota exceeded error - switch immediately
-            if "429" in error_msg or "quota" in error_msg.lower():
+            if "429" in error_msg or "quota" in error_msg.lower() or "rate_limit" in error_msg.lower():
                 print(f"[Quota Exceeded] Key {current_key_idx} hit quota limit. Rotating to next key...")
                 quota_tracker.key_usage[current_key_idx]["count"] = quota_tracker.quota_limit
                 current_key_idx = (current_key_idx + 1) % len(api_keys)
-            elif "JSON" not in error_msg:  # If it's a model/key error, try next key
+            elif "JSON" not in error_msg:
                 current_key_idx = (current_key_idx + 1) % len(api_keys)
             else:
-                break  # JSON error means the model worked but output was bad, don't change key just fail
+                break
                 
     handle_ai_error(last_error)
 
